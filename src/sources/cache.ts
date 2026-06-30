@@ -26,3 +26,9 @@ export async function cachedSearch(
   cache.set(k, { at: Date.now(), results });
   return results;
 }
+
+export function clearCacheByPrefix(sourceIdPrefix: string): void {
+  for (const k of cache.keys()) {
+    if (k.startsWith(`${sourceIdPrefix}`)) cache.delete(k);
+  }
+}

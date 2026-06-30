@@ -11,8 +11,13 @@ export interface SourceState {
   count: number;
 }
 
+function isAuthRequired(e: unknown): boolean {
+  return e instanceof Error && e.name === "AuthRequiredError";
+}
+
 function errorCode(e: unknown, timedOut: boolean): string {
   if (timedOut) return "timed out";
+  if (isAuthRequired(e)) return "login";
   if (e instanceof HttpError && e.status > 0) return `HTTP ${e.status}`;
   return "no response";
 }
@@ -61,7 +66,7 @@ function idleState(): ConcurrentSearchState {
   };
 }
 
-export function useConcurrentSearch(query: string): ConcurrentSearchState {
+export function useConcurrentSearch(query: string, nonce = 0): ConcurrentSearchState {
   const [state, setState] = useState<ConcurrentSearchState>(idleState);
 
   useEffect(() => {
@@ -120,7 +125,7 @@ export function useConcurrentSearch(query: string): ConcurrentSearchState {
       alive = false;
       ctrl.abort();
     };
-  }, [query]);
+  }, [query, nonce]);
 
   return state;
 }

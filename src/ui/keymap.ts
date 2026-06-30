@@ -30,6 +30,7 @@ export const HELP_GROUPS: HelpGroup[] = [
       { keys: "s", label: "Sort results" },
       { keys: "y", label: "Copy magnet" },
       { keys: "m", label: "Paste magnet" },
+      { keys: "L", label: "Sources (sign in)" },
     ],
   },
   {
@@ -72,6 +73,14 @@ export function footerHints(
       SWITCH,
       ALWAYS,
       { keys: "q", label: "Quit" },
+    ];
+  }
+  if (section === "sources") {
+    return [
+      { keys: "↵", label: "Sign in" },
+      { keys: "x", label: "Sign out" },
+      SWITCH,
+      ALWAYS,
     ];
   }
   if (section === "seeding") {

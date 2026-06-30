@@ -6,19 +6,24 @@ import { solid } from "./solidtorrents";
 import { tpbMovies, tpbTv } from "./piratebay";
 import { x1337Movies, x1337Tv } from "./x1337";
 import { yts } from "./yts";
+import { rutrackerAnime, rutrackerGames, rutrackerMovies, rutrackerTv } from "./rutracker";
 import type { Source, SourceGroup, SourceId } from "./types";
 
 export const SOURCES: readonly Source[] = [
   fitgirl,
+  rutrackerGames,
   yts,
   tpbMovies,
   x1337Movies,
+  rutrackerMovies,
   eztv,
   solid,
   tpbTv,
   x1337Tv,
+  rutrackerTv,
   nyaa,
   subsplease,
+  rutrackerAnime,
 ];
 
 export const DEFAULT_SOURCE: Source = SOURCES[0]!;

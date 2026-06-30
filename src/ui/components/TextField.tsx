@@ -5,6 +5,7 @@ export interface TextFieldProps {
   isDisabled?: boolean;
   defaultValue?: string;
   placeholder?: string;
+  mask?: boolean;
   onChange?: (value: string) => void;
   onSubmit?: (value: string) => void;
   onExitDown?: () => void;
@@ -48,6 +49,7 @@ export function TextField({
   isDisabled = false,
   defaultValue = "",
   placeholder = "",
+  mask = false,
   onChange,
   onSubmit,
   onExitDown,
@@ -121,8 +123,10 @@ export function TextField({
     { isActive: !isDisabled },
   );
 
+  const shown = mask ? "•".repeat(value.length) : value;
+
   if (isDisabled) {
-    return value ? <Text>{value}</Text> : <Text dimColor>{placeholder}</Text>;
+    return value ? <Text>{shown}</Text> : <Text dimColor>{placeholder}</Text>;
   }
 
   if (value.length === 0) {
@@ -137,9 +141,9 @@ export function TextField({
     return <Text inverse>{CURSOR}</Text>;
   }
 
-  const before = value.slice(0, cursor);
-  const atChar = value[cursor] ?? CURSOR;
-  const after = cursor < value.length ? value.slice(cursor + 1) : "";
+  const before = shown.slice(0, cursor);
+  const atChar = shown[cursor] ?? CURSOR;
+  const after = cursor < shown.length ? shown.slice(cursor + 1) : "";
   return (
     <Text>
       {before}

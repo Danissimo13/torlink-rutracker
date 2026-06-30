@@ -33,6 +33,11 @@ import { Spinner } from "./components/Spinner";
 import { TabTitle } from "./components/TabTitle";
 import { Splash } from "./views/Splash";
 import { FolderPrompt } from "./components/FolderPrompt";
+import { RutrackerLogin, type LoginStatus } from "./components/RutrackerLogin";
+import { Sources } from "./components/Sources";
+import { login, loadSession, clearSession, type Captcha } from "../sources/rutracker/session";
+import { clearRutrackerCache } from "../sources/rutracker";
+import { clearCacheByPrefix } from "../sources/cache";
 import { footerHints } from "./keymap";
 import { COLOR, ICON } from "./theme";
 import { useMouseWheel } from "./hooks/useMouseWheel";
@@ -83,6 +88,11 @@ export function App({
   const [seedFocus, setSeedFocus] = useState<SeedFocus | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [editingFolder, setEditingFolder] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [loginStatus, setLoginStatus] = useState<LoginStatus>({ kind: "idle" });
+  const [loginUser, setLoginUser] = useState<string | undefined>(undefined);
+  const [captcha, setCaptcha] = useState<Captcha | null>(null);
+  const [searchNonce, setSearchNonce] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const booting = useRef(false);
 
@@ -92,6 +102,8 @@ export function App({
     let alive = true;
     void (async () => {
       const cfg = await loadConfig();
+      const session = await loadSession();
+      if (alive && session?.username) setLoginUser(session.username);
       const q = new DownloadQueue();
       q.restore(reconcileQueue(await loadQueue()));
       q.restoreHistory(await loadHistory());
@@ -156,6 +168,67 @@ export function App({
   const closeFolderPrompt = useCallback(() => {
     setEditingFolder(false);
   }, []);
+
+  const refreshSearch = useCallback(() => {
+    clearRutrackerCache();
+    clearCacheByPrefix("rt-");
+    setSearchNonce((n) => n + 1);
+  }, []);
+
+  const openLogin = useCallback(() => {
+    setShowHelp(false);
+    setEditingFolder(false);
+    setLoginStatus({ kind: "idle" });
+    setCaptcha(null);
+    setLoggingIn(true);
+  }, []);
+
+  const logout = useCallback(() => {
+    void (async () => {
+      await clearSession();
+      setLoginUser(undefined);
+      setNotice(`${ICON.done} Signed out of RuTracker`);
+      refreshSearch();
+    })();
+  }, [refreshSearch]);
+
+  const submitLogin = useCallback(
+    (username: string, password: string, captchaCode?: string) => {
+      setLoginStatus({ kind: "busy" });
+      void (async () => {
+        try {
+          const answer =
+            captcha && captchaCode
+              ? { sid: captcha.sid, field: captcha.field, code: captchaCode }
+              : undefined;
+          const outcome = await login(username, password, { captcha: answer });
+          if (outcome.kind === "ok") {
+            setLoginUser(outcome.session.username);
+            setCaptcha(null);
+            setLoggingIn(false);
+            setLoginStatus({ kind: "idle" });
+            setNotice(`${ICON.done} Signed in to RuTracker`);
+            refreshSearch();
+          } else if (outcome.kind === "captcha") {
+            setCaptcha(outcome.captcha);
+            setLoginStatus(
+              captcha
+                ? { kind: "error", message: "Captcha incorrect — try the new image." }
+                : { kind: "idle" },
+            );
+          } else {
+            setLoginStatus({ kind: "error", message: outcome.message });
+          }
+        } catch (e) {
+          setLoginStatus({
+            kind: "error",
+            message: e instanceof Error ? e.message : "Login failed.",
+          });
+        }
+      })();
+    },
+    [refreshSearch, captcha],
+  );
 
   const setDownloadDir = useCallback(
     (raw: string) => {
@@ -278,7 +351,7 @@ export function App({
       submitQuery,
       section,
       setSection,
-      region: showHelp || editingFolder ? "help" : region,
+      region: showHelp || editingFolder || loggingIn ? "help" : region,
       setRegion,
       captureMode,
       setCaptureMode,
@@ -290,6 +363,11 @@ export function App({
       copyMagnet,
       notice,
       setNotice,
+      searchNonce,
+      refreshSearch,
+      openLogin,
+      logout,
+      rutrackerUser: loginUser,
       quitAll,
       listRows,
       compact,
@@ -307,6 +385,12 @@ export function App({
     region,
     showHelp,
     editingFolder,
+    loggingIn,
+    searchNonce,
+    refreshSearch,
+    openLogin,
+    logout,
+    loginUser,
     captureMode,
     downloadFocus,
     seedFocus,
@@ -329,6 +413,7 @@ export function App({
         return;
       }
       if (editingFolder) return; // the folder prompt owns input (its own esc + enter)
+      if (loggingIn) return;
       if (captureMode === "text") return;
       if (showHelp) {
         setShowHelp(false);
@@ -341,6 +426,12 @@ export function App({
       if (input === "o") {
         setShowHelp(false);
         setEditingFolder(true);
+        return;
+      }
+      if (input === "L") {
+        setShowHelp(false);
+        setSection("sources");
+        setRegion("content");
         return;
       }
       if (input === "m") {
@@ -420,10 +511,23 @@ export function App({
           </Box>
         ) : null}
 
+        {loggingIn ? (
+          <Box marginTop={1}>
+            <RutrackerLogin
+              width={Math.max(24, Math.min(cols - 4, 62))}
+              currentUser={loginUser}
+              status={loginStatus}
+              captcha={captcha ?? undefined}
+              onSubmit={submitLogin}
+              onCancel={() => setLoggingIn(false)}
+            />
+          </Box>
+        ) : null}
+
         <Box
           height={bodyH}
           marginTop={compact ? 0 : 1}
-          display={showHelp || editingFolder ? "none" : "flex"}
+          display={showHelp || editingFolder || loggingIn ? "none" : "flex"}
           overflow="hidden"
         >
           <Sidebar />
@@ -432,6 +536,8 @@ export function App({
               <Downloads />
             ) : section === "seeding" ? (
               <Seeding />
+            ) : section === "sources" ? (
+              <Sources />
             ) : (
               <Results />
             )}
@@ -439,7 +545,7 @@ export function App({
         </Box>
 
         {showFooter ? (
-          <Box display={showHelp || editingFolder ? "none" : "flex"}>
+          <Box display={showHelp || editingFolder || loggingIn ? "none" : "flex"}>
             <Footer hints={footerHints(region, section, downloadFocus, seedFocus)} />
           </Box>
         ) : null}

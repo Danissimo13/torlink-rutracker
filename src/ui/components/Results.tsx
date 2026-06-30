@@ -120,9 +120,10 @@ export function Results() {
     copyMagnet,
     contentWidth,
     listRows,
+    searchNonce,
   } = useStore();
 
-  const search = useConcurrentSearch(query);
+  const search = useConcurrentSearch(query, searchNonce);
 
   const [sort, setSort] = useState<Sort>("none");
   const results = useMemo(() => {

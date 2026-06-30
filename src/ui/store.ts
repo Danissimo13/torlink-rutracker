@@ -9,7 +9,7 @@ export type View = "splash" | "browser";
 
 export type Category = "all" | "games" | "movies" | "tv" | "anime";
 
-export type Section = Category | "downloads" | "seeding";
+export type Section = Category | "downloads" | "seeding" | "sources";
 
 export const CATEGORIES: { key: Category; label: string; group?: SourceGroup }[] = [
   { key: "all", label: "All" },
@@ -60,6 +60,12 @@ export interface Store {
 
   notice: string | null;
   setNotice: (s: string | null) => void;
+
+  searchNonce: number;
+  refreshSearch: () => void;
+  openLogin: () => void;
+  logout: () => void;
+  rutrackerUser?: string;
 
   quitAll: () => void;
 
