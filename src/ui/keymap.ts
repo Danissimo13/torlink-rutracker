@@ -14,7 +14,7 @@ export const HELP_GROUPS: HelpGroup[] = [
   {
     title: "Navigate",
     hints: [
-      { keys: "↑ ↓ ← →", label: "Navigate content and panes" },
+      { keys: "↑ ↓ ← →, h j k l", label: "Navigate content and panes" },
       { keys: "↵", label: "Open" },
       { keys: "tab", label: "Switch pane" },
       { keys: "esc", label: "Back" },
